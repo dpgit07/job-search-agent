@@ -37,8 +37,12 @@ jobs:
           git config user.name  "Job Search Bot"
           git config user.email "bot@job-search-agent.local"
           git add data/job_tracker.json
-          # Only commit if there are actual changes
-          git diff --cached --quiet \
-            && echo "No new jobs found — tracker unchanged." \
-            || git commit -m "chore: daily scan $(date -u +%Y-%m-%d) [skip ci]"
-          git push
+          # Only commit if there are actual changes to the tracker
+          if git diff --cached --quiet; then
+            echo "No new jobs found — tracker unchanged, nothing to commit."
+          else
+            git commit -m "chore: daily scan $(date -u +%Y-%m-%d) [skip ci]"
+            # Pull remote changes first to avoid non-fast-forward push errors
+            git pull --rebase origin main
+            git push
+          fi

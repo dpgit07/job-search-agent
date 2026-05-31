@@ -34,16 +34,24 @@ COMPANIES_PATH = ROOT / "data" / "target_companies.json"
 APIFY_TOKEN       = os.environ.get("APIFY_TOKEN", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-ACTOR_ID = "curious_coder/linkedin-jobs-scraper"
+# Apify actor ID uses ~ separator in REST API (not /)
+ACTOR_ID = "curious_coder~linkedin-jobs-scraper"
 
-SEARCH_QUERIES = [
-    "Senior Data Engineer",
-    "Lead Data Engineer",
-    "Staff Data Engineer",
-    "Data Engineer Spark SQL",
+# Pre-built LinkedIn search URLs (actor requires URLs, not keyword strings).
+# f_TPR=r86400  → posted in the last 24 hours
+# f_E=4         → Senior level
+# f_WT=2        → Remote only  (remove to include on-site/hybrid)
+SEARCH_URLS = [
+    # Senior Data Engineer — US, last 24h
+    "https://www.linkedin.com/jobs/search/?keywords=Senior+Data+Engineer&location=United+States&f_TPR=r86400&f_E=4&position=1&pageNum=0",
+    # Lead / Staff Data Engineer — US, last 24h
+    "https://www.linkedin.com/jobs/search/?keywords=Lead+Data+Engineer&location=United+States&f_TPR=r86400&f_E=4&position=1&pageNum=0",
+    "https://www.linkedin.com/jobs/search/?keywords=Staff+Data+Engineer&location=United+States&f_TPR=r86400&f_E=4&position=1&pageNum=0",
+    # Spark/SQL focus — broader time window (past week) to catch more results
+    "https://www.linkedin.com/jobs/search/?keywords=Data+Engineer+Spark+SQL&location=United+States&f_TPR=r604800&position=1&pageNum=0",
 ]
 
-MAX_PER_QUERY = 20   # LinkedIn jobs to scrape per query
+MAX_PER_URL   = 25   # LinkedIn jobs to scrape per URL
 FIT_THRESHOLD = 70   # minimum fit % to add to tracker
 
 
@@ -75,35 +83,39 @@ def tier_score(tier: str) -> int:
 
 # ── Apify scraping ─────────────────────────────────────────────────────────────
 
-def scrape_linkedin(query: str) -> list[dict]:
+def scrape_linkedin(search_url: str) -> list[dict]:
     """
-    Run the Apify LinkedIn Jobs Scraper synchronously and return raw items.
-    Uses run-sync-get-dataset-items for a single blocking call.
+    Run the Apify LinkedIn Jobs Scraper and return raw items.
+    Actor input: list of LinkedIn search page URLs (not keyword strings).
+    REST API uses ~ separator: curious_coder~linkedin-jobs-scraper
     """
     if not APIFY_TOKEN:
         print("  ⚠ APIFY_TOKEN not set — skipping Apify call")
         return []
 
+    # Synchronous run — blocks until complete, returns dataset items directly.
+    # Timeout 300s (5 min) to give the actor enough time.
     endpoint = (
         f"https://api.apify.com/v2/acts/{ACTOR_ID}"
-        f"/run-sync-get-dataset-items?token={APIFY_TOKEN}&timeout=120&memory=1024"
+        f"/run-sync-get-dataset-items"
+        f"?token={APIFY_TOKEN}&timeout=300&memory=1024"
     )
     payload = {
-        "queries":     query,
-        "location":    "United States",
-        "maxResults":  MAX_PER_QUERY,
-        "publishedAt": "r86400",   # posted in the last 24 hours
+        "urls":          [search_url],
+        "count":         MAX_PER_URL,
+        "scrapeCompany": False,   # skip extra company requests → faster & cheaper
     }
 
+    label = search_url.split("keywords=")[1].split("&")[0].replace("+", " ")
     try:
-        print(f"  Calling Apify: {query!r} …", end=" ", flush=True)
-        r = requests.post(endpoint, json=payload, timeout=180)
+        print(f"  Calling Apify: {label!r} …", end=" ", flush=True)
+        r = requests.post(endpoint, json=payload, timeout=360)
         r.raise_for_status()
         items = r.json()
         print(f"{len(items)} results")
         return items
     except requests.HTTPError as e:
-        print(f"HTTP {e.response.status_code} — {e.response.text[:120]}")
+        print(f"HTTP {e.response.status_code} — {e.response.text[:200]}")
         return []
     except Exception as e:
         print(f"Error: {e}")
@@ -307,23 +319,24 @@ def main():
     dup_count = 0
     total_raw = 0
 
-    for query in SEARCH_QUERIES:
-        print(f"[Query] {query}")
+    for idx, search_url in enumerate(SEARCH_URLS):
+        label = search_url.split("keywords=")[1].split("&")[0].replace("+", " ")
+        print(f"[URL {idx+1}/{len(SEARCH_URLS)}] {label}")
 
         if args.dry_run:
             # Inject one fake job so the scoring pipeline can be tested
             raw_items = [{
-                "title":   "Senior Data Engineer (Dry Run)",
-                "company": "Databricks",
-                "location":"Remote, United States",
-                "url":     f"https://example.com/job/{query.replace(' ','-').lower()}",
+                "title":       "Senior Data Engineer (Dry Run)",
+                "company":     "Databricks",
+                "location":    "Remote, United States",
+                "jobUrl":      f"https://example.com/job/{label.replace(' ','-').lower()}-{idx}",
                 "description": (
                     "We're looking for a Senior Data Engineer proficient in Spark, "
                     "Scala, Python, SQL, Airflow, and Delta Lake. 4+ years experience."
                 ),
             }]
         else:
-            raw_items = scrape_linkedin(query)
+            raw_items = scrape_linkedin(search_url)
 
         total_raw += len(raw_items)
 
