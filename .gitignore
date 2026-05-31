@@ -1,0 +1,39 @@
+# Secrets & credentials
+.env
+*.env
+client_secret.json
+credentials.json
+token.json
+*_token.txt
+
+# Resume PDFs (keep markdown, ignore binaries)
+resume/master_resume.pdf
+resume/tailored/*.pdf
+output/tailored_resumes/*.pdf
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+
+# Generated outputs (these are personal/ephemeral, not meant for the repo)
+output/reports/*.md
+output/cover_letters/*.md
+output/tailored_resumes/*.md
+data/interview_notes/*.md
+
+# Keep the placeholder files
+!output/reports/.gitkeep
+!output/cover_letters/.gitkeep
+!output/tailored_resumes/.gitkeep
+!data/interview_notes/.gitkeep

@@ -1,0 +1,29 @@
+{
+  "tier_1": [
+    {"name": "LinkedIn", "careers_url": "https://careers.linkedin.com", "priority": "highest", "reason": "Already deep domain expert on LinkedIn data stack"},
+    {"name": "Meta", "careers_url": "https://www.metacareers.com", "priority": "high"},
+    {"name": "Google", "careers_url": "https://careers.google.com", "priority": "high"},
+    {"name": "Apple", "careers_url": "https://jobs.apple.com", "priority": "high"},
+    {"name": "Amazon", "careers_url": "https://amazon.jobs", "priority": "high"},
+    {"name": "Microsoft", "careers_url": "https://careers.microsoft.com", "priority": "high"},
+    {"name": "Netflix", "careers_url": "https://jobs.netflix.com", "priority": "high"}
+  ],
+  "tier_2": [
+    {"name": "Databricks", "careers_url": "https://www.databricks.com/company/careers", "priority": "high", "reason": "Have certification + migration project"},
+    {"name": "Snowflake", "careers_url": "https://careers.snowflake.com", "priority": "high", "reason": "SnowPro certified"},
+    {"name": "Capital One", "careers_url": "https://www.capitalonecareers.com", "priority": "high", "reason": "Near Maryland"},
+    {"name": "Airbnb", "careers_url": "https://careers.airbnb.com", "priority": "medium"},
+    {"name": "Uber", "careers_url": "https://www.uber.com/careers", "priority": "medium"},
+    {"name": "Stripe", "careers_url": "https://stripe.com/jobs", "priority": "medium"},
+    {"name": "Disney", "careers_url": "https://jobs.disneycareers.com", "priority": "medium"}
+  ],
+  "tier_3": [
+    {"name": "T-Mobile", "careers_url": "https://careers.t-mobile.com", "priority": "medium"},
+    {"name": "Salesforce", "careers_url": "https://careers.salesforce.com", "priority": "medium"},
+    {"name": "Adobe", "careers_url": "https://careers.adobe.com", "priority": "medium"},
+    {"name": "Oracle", "careers_url": "https://careers.oracle.com", "priority": "medium"},
+    {"name": "Walmart", "careers_url": "https://careers.walmart.com", "priority": "medium"},
+    {"name": "JPMorgan", "careers_url": "https://careers.jpmorgan.com", "priority": "medium"},
+    {"name": "Goldman Sachs", "careers_url": "https://www.goldmansachs.com/careers", "priority": "medium"}
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "name": "Dharmendra Kumar Prajapati",
+  "email": "dharm.prajapati0711@gmail.com",
+  "phone": "+1-6505370049",
+  "location": "Maryland, USA",
+  "experience_years": 4,
+  "education": {
+    "masters": {
+      "degree": "M.Tech",
+      "school": "IIT Hyderabad",
+      "gpa": 9.02,
+      "specialization": "Big Data Processing & Distributed Computing"
+    },
+    "bachelors": {
+      "degree": "B.Tech",
+      "school": "MMMUT Gorakhpur",
+      "gpa": 8.05
+    }
+  },
+  "skills": {
+    "expert": ["Scala-Spark", "SQL", "Hive", "Presto", "HDFS", "Data Pipelines", "ETL", "Batch Processing"],
+    "advanced": ["Python", "PySpark", "DBT", "Iceberg", "Airflow", "Azkaban", "DataHub"],
+    "intermediate": ["Snowflake", "Databricks", "Azure Synapse", "BigQuery", "Redshift"],
+    "familiar": ["Kafka", "Parquet", "Delta Lake", "Hadoop"]
+  },
+  "certifications": [
+    "Snowflake SnowPro Core",
+    "Databricks Certified Associate Developer Spark 3.0",
+    "Databricks Certified Data Engineer Associate",
+    "Google Cloud Associate Cloud Engineer",
+    "Google Cloud Digital Leader",
+    "Microsoft Azure AZ-900",
+    "Microsoft Azure DP-900",
+    "Apache Airflow Fundamentals"
+  ],
+  "quantified_impact": {
+    "revenue_impact": "$33-80M/year across projects",
+    "scale": "20 billion records/day processing",
+    "performance": "60% runtime reduction via Spark tuning",
+    "data_health": "Improved TDD from 7 days to <1 day, 98% uptime",
+    "productivity": "200 hours/week saved for downstream users",
+    "datasets": "83+ datasets with automated quality checks",
+    "sla": "Improved latency from 72H to 24H across 50 data contracts"
+  },
+  "awards": [
+    "Rising Star Annual Award Finalist (2026)",
+    "Extra Effort Award (2024)",
+    "Client Recognition (2023)",
+    "Winner of Learning Challenge — 5 certifications in 3 months (2023)",
+    "All-Star Impact Player Finalist (2023)"
+  ],
+  "target_salary_min": 140000,
+  "target_salary_max": 250000,
+  "preferred_locations": ["Remote", "Maryland", "Virginia", "California", "Washington", "New York", "Texas"],
+  "target_roles": [
+    "Senior Data Engineer",
+    "Staff Data Engineer",
+    "Lead Data Engineer",
+    "Data Engineering Manager",
+    "Technical Lead"
+  ],
+  "deal_breakers": [
+    "contract_c2c",
+    "below_senior_level",
+    "100_percent_travel",
+    "salary_below_130000"
+  ],
+  "visa_status": "[UPDATE: H1B/GC/Citizen]",
+  "linkedin_url": "[UPDATE WITH YOUR LINKEDIN URL]"
+}

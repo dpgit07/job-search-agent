@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 *)",
+      "Bash(node *)",
+      "Bash(cat *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(ls *)",
+      "Read(*)",
+      "Write(./output/*)",
+      "Write(./data/*)",
+      "Write(./.claude/memory.md)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat data/job_tracker.json 2>/dev/null | python3 -c \"import json,sys; d=json.load(sys.stdin); active=[j for j in d.get('jobs',[]) if j.get('status') not in ['rejected','withdrawn']]; print(f'📊 Active applications: {len(active)} | Total tracked: {len(d.get(\\\"jobs\\\",[]))}')\" 2>/dev/null || echo '📋 Job tracker not initialized yet. Run /scan to start.'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"Session ended at $(date). Remember to run /daily tomorrow.\" >> .claude/memory.md"
+          }
+        ]
+      }
+    ]
+  }
+}

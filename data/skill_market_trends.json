@@ -1,0 +1,13 @@
+{
+  "last_updated": null,
+  "skills_demand": [],
+  "salary_trends": {},
+  "emerging_skills": [],
+  "candidate_gaps": [
+    {"skill": "AWS", "demand_pct": null, "notes": "Most US jobs need it; candidate has GCP/Azure"},
+    {"skill": "Kafka/Streaming", "demand_pct": null, "notes": "Candidate has batch focus"},
+    {"skill": "LLM/RAG pipelines", "demand_pct": null, "notes": "Emerging requirement"},
+    {"skill": "Terraform/IaC", "demand_pct": null, "notes": "Growing requirement"},
+    {"skill": "Kubernetes/Docker", "demand_pct": null, "notes": "Containerization growing"}
+  ]
+}

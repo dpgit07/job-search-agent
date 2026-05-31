@@ -1,0 +1,38 @@
+{
+  "last_scan": null,
+  "total_scans": 0,
+  "jobs": [],
+  "schema": {
+    "id": "unique_job_id",
+    "company": "string",
+    "role": "string",
+    "location": "string",
+    "salary_min": "number or null",
+    "salary_max": "number or null",
+    "remote": "yes/no/hybrid",
+    "link": "url",
+    "posted_date": "ISO date",
+    "discovered_date": "ISO date",
+    "fit_score": "0-100",
+    "fit_breakdown": {
+      "skill_match": "0-30",
+      "experience_match": "0-20",
+      "salary_match": "0-15",
+      "company_tier": "0-10",
+      "location_match": "0-10",
+      "growth_opportunity": "0-10",
+      "visa_compatibility": "0-5"
+    },
+    "status": "new|reviewing|tailored|applied|interviewing|offer|rejected|withdrawn",
+    "applied_date": "ISO date or null",
+    "resume_version": "path to tailored resume or null",
+    "cover_letter": "path to cover letter or null",
+    "follow_up_date": "ISO date or null",
+    "contacts": ["recruiter name, email"],
+    "interview_dates": [],
+    "notes": "string",
+    "key_skills_required": ["list"],
+    "key_skills_matching": ["list"],
+    "key_skills_missing": ["list"]
+  }
+}
