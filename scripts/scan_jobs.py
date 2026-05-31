@@ -180,7 +180,7 @@ Return exactly:
     try:
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         resp = client.messages.create(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5",
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -196,9 +196,14 @@ Return exactly:
 
 def _rule_based_score(job: dict, profile: dict, company_tiers: dict) -> dict:
     """Fast keyword-based scorer — used when Claude API is unavailable."""
-    desc = (
-        str(job.get("description", "")) + " " + str(job.get("role", ""))
-    ).lower()
+    # Build a composite text blob from all available text fields
+    desc = " ".join([
+        str(job.get("description", "")),
+        str(job.get("role", "")),
+        str(job.get("seniority_level", "")),
+        str(job.get("industry", "")),
+        str(job.get("employment_type", "")),
+    ]).lower()
 
     # Skill match (0-30)
     all_skills = (
@@ -209,20 +214,27 @@ def _rule_based_score(job: dict, profile: dict, company_tiers: dict) -> dict:
     matching = [s for s, _ in all_skills if s.lower() in desc]
     skill_score = min(30, len(matching) * 4)
 
+    # If description is completely empty, give a neutral mid-range skill score
+    # (we know this is a DE role since we searched for it, not a 0-match)
+    if not job.get("description") and not matching:
+        skill_score = 12
+
     # Experience match (0-20)
-    exp_score = 18 if any(x in desc for x in ["4+", "5+", "senior", "lead"]) else 13
+    exp_score = 18 if any(x in desc for x in ["4+", "5+", "3+", "senior", "lead", "staff"]) else 14
 
     # Salary (0-15)
     sal = str(job.get("salary", "")).lower()
-    if not sal:
+    if not sal or sal == "none":
         salary_score = 10  # unknown — neutral
-    elif any(x in sal for x in ["140", "150", "160", "170", "180", "190", "200"]):
+    elif any(x in sal for x in ["140", "150", "160", "170", "180", "190", "200", "210", "220"]):
         salary_score = 15
+    elif any(x in sal for x in ["120", "130"]):
+        salary_score = 11
     else:
         salary_score = 8
 
     # Company tier (0-10)
-    tier  = tier_for_company(job.get("company", ""), company_tiers)
+    tier    = tier_for_company(job.get("company", ""), company_tiers)
     t_score = tier_score(tier)
 
     # Location (0-10)
@@ -233,6 +245,8 @@ def _rule_based_score(job: dict, profile: dict, company_tiers: dict) -> dict:
         loc_score = 9
     elif any(x in loc for x in ["california", "new york", "seattle", "texas", "austin"]):
         loc_score = 7
+    elif "united states" in loc or loc in ("", "unknown"):
+        loc_score = 7   # US-wide or unknown → assume hybrid/remote possible
     else:
         loc_score = 5
 
@@ -241,16 +255,16 @@ def _rule_based_score(job: dict, profile: dict, company_tiers: dict) -> dict:
     return {
         "fit_score": min(100, total),
         "fit_breakdown": {
-            "skill_match": skill_score,
-            "experience_match": exp_score,
-            "salary_match": salary_score,
-            "company_tier": t_score,
-            "location_match": loc_score,
+            "skill_match":       skill_score,
+            "experience_match":  exp_score,
+            "salary_match":      salary_score,
+            "company_tier":      t_score,
+            "location_match":    loc_score,
             "growth_opportunity": 8,
             "visa_compatibility": 5,
         },
         "key_skills_matching": matching[:5],
-        "key_skills_missing": [],
+        "key_skills_missing":  [],
         "recommendation": "Apply" if total >= 85 else ("Maybe" if total >= 70 else "Skip"),
         "notes": "Rule-based score — Claude API unavailable",
     }
@@ -259,7 +273,21 @@ def _rule_based_score(job: dict, profile: dict, company_tiers: dict) -> dict:
 # ── Normalise raw Apify item → tracker job dict ────────────────────────────────
 
 def normalise(raw: dict) -> dict:
-    """Map raw Apify LinkedIn scraper fields to our tracker schema."""
+    """Map raw Apify LinkedIn scraper fields to our tracker schema.
+
+    The curious_coder actor returns these relevant fields:
+      url / jobUrl          — job posting URL
+      title / jobTitle      — job title
+      company / companyName — company name
+      location              — location string
+      salary / salaryRange  — salary (often empty on LinkedIn)
+      postedAt              — ISO date string
+      descriptionText       — plain-text description  ← prefer this
+      description           — may be HTML or plain text
+      seniorityLevel        — e.g. "Senior"
+      employmentType        — e.g. "Full-time"
+      industry              — e.g. "Technology"
+    """
     url = (
         raw.get("url")
         or raw.get("jobUrl")
@@ -267,6 +295,17 @@ def normalise(raw: dict) -> dict:
         or raw.get("applyUrl")
         or ""
     )
+
+    # Prefer plain-text description; fall back to HTML version
+    description_raw = (
+        raw.get("descriptionText")
+        or raw.get("description")
+        or raw.get("jobDescription")
+        or raw.get("descriptionHtml")
+        or ""
+    )
+    description = str(description_raw)[:3000]
+
     return {
         "id":               job_id(url) if url else None,
         "company":          raw.get("company") or raw.get("companyName", "Unknown"),
@@ -287,8 +326,11 @@ def normalise(raw: dict) -> dict:
         "contacts":         [],
         "interview_dates":  [],
         "notes":            "",
-        "description":      str(raw.get("description", ""))[:3000],
-        "description_snippet": str(raw.get("description", ""))[:250],
+        "seniority_level":  raw.get("seniorityLevel", ""),
+        "employment_type":  raw.get("employmentType", ""),
+        "industry":         raw.get("industry", ""),
+        "description":      description,
+        "description_snippet": description[:250],
     }
 
 
