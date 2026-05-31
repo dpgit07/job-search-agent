@@ -1,6 +1,6 @@
 {
-  "last_scan": null,
-  "total_scans": 0,
+  "last_scan": "2026-05-31T03:00:49.878480+00:00",
+  "total_scans": 1,
   "jobs": [],
   "schema": {
     "id": "unique_job_id",
@@ -28,11 +28,19 @@
     "resume_version": "path to tailored resume or null",
     "cover_letter": "path to cover letter or null",
     "follow_up_date": "ISO date or null",
-    "contacts": ["recruiter name, email"],
+    "contacts": [
+      "recruiter name, email"
+    ],
     "interview_dates": [],
     "notes": "string",
-    "key_skills_required": ["list"],
-    "key_skills_matching": ["list"],
-    "key_skills_missing": ["list"]
+    "key_skills_required": [
+      "list"
+    ],
+    "key_skills_matching": [
+      "list"
+    ],
+    "key_skills_missing": [
+      "list"
+    ]
   }
 }
