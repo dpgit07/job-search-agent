@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Job Search Agent{% endblock %}
+
+{% block content %}
+
+<!-- ── Page header ──────────────────────────────────────────────────────────── -->
+<div class="page-header d-flex justify-content-between align-items-center">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">
+      Last scan:
+      {% if last_scan %}
+        <strong>{{ last_scan | fmt_date }}</strong>
+        <span class="text-muted">({{ last_scan | days_ago }})</span>
+        &nbsp;·&nbsp; {{ total_scans }} total scans
+      {% else %}
+        <span class="text-muted">No scans yet — trigger the GitHub Action to start</span>
+      {% endif %}
+    </p>
+  </div>
+  <a href="/api/refresh" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-clockwise"></i> Refresh
+  </a>
+</div>
+
+<!-- ── Stat cards ───────────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="stat-card stat-total">
+      <div class="stat-number">{{ stats.total }}</div>
+      <div class="stat-label"><i class="bi bi-collection"></i> Total</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="stat-card stat-new">
+      <div class="stat-number">{{ stats.new }}</div>
+      <div class="stat-label"><i class="bi bi-stars"></i> New</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="stat-card stat-applied">
+      <div class="stat-number">{{ stats.applied }}</div>
+      <div class="stat-label"><i class="bi bi-send"></i> Applied</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="stat-card stat-interviewing">
+      <div class="stat-number">{{ stats.interviewing }}</div>
+      <div class="stat-label"><i class="bi bi-people"></i> Interviewing</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="stat-card stat-offer">
+      <div class="stat-number">{{ stats.offers }}</div>
+      <div class="stat-label"><i class="bi bi-trophy"></i> Offers</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="stat-card stat-rejected">
+      <div class="stat-number">{{ stats.rejected }}</div>
+      <div class="stat-label"><i class="bi bi-x-circle"></i> Rejected</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Follow-ups due ────────────────────────────────────────────────────────── -->
+{% if follow_ups %}
+<div class="section-card mb-4">
+  <div class="section-header">
+    <h2 class="section-title text-warning">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      Follow-ups Due ({{ follow_ups | length }})
+    </h2>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Company</th><th>Role</th><th>Applied</th>
+          <th>Follow-up Due</th><th>Status</th><th>Fit</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in follow_ups %}
+        <tr>
+          <td class="fw-semibold">{{ j.company }}</td>
+          <td>{{ j.role }}</td>
+          <td>{{ j.applied_date | fmt_date }}</td>
+          <td class="text-warning fw-semibold">{{ j.follow_up_date | fmt_date }}</td>
+          <td><span class="status-badge {{ j.status | badge_class }}">{{ j.status }}</span></td>
+          <td><span class="fit-badge {{ j.fit_score | fit_class }}">{{ j.fit_score }}%</span></td>
+          <td>
+            {% if j.link %}
+            <a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── High priority jobs ────────────────────────────────────────────────────── -->
+{% if high_priority %}
+<div class="section-card mb-4">
+  <div class="section-header">
+    <h2 class="section-title">
+      <i class="bi bi-fire text-danger"></i>
+      High Priority — Apply Now ({{ high_priority | length }})
+    </h2>
+    <span class="section-subtitle">≥ 85% fit · New, not yet applied</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Fit</th><th>Company</th><th>Role</th><th>Location</th>
+          <th>Salary</th><th>Found</th><th>Top Skills</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in high_priority %}
+        <tr>
+          <td>
+            <span class="fit-badge fit-high">{{ j.fit_score }}%</span>
+          </td>
+          <td class="fw-semibold">{{ j.company }}</td>
+          <td>{{ j.role }}</td>
+          <td class="text-muted small">{{ j.location }}</td>
+          <td class="text-muted small">{{ j.salary or '—' }}</td>
+          <td class="text-muted small">{{ j.discovered_date | days_ago }}</td>
+          <td class="small">
+            {% for skill in (j.key_skills_matching or [])[:3] %}
+              <span class="skill-chip">{{ skill }}</span>
+            {% endfor %}
+          </td>
+          <td>
+            <a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-primary">
+              Apply <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Recently discovered ────────────────────────────────────────────────────── -->
+<div class="section-card">
+  <div class="section-header">
+    <h2 class="section-title">
+      <i class="bi bi-clock-history"></i> Recently Discovered
+    </h2>
+    <a href="{{ url_for('jobs_page') }}" class="btn btn-sm btn-outline-secondary">
+      View all <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+
+  {% if recent %}
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Fit</th><th>Company</th><th>Role</th>
+          <th>Location</th><th>Status</th><th>Found</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in recent %}
+        <tr>
+          <td><span class="fit-badge {{ j.fit_score | fit_class }}">{{ j.fit_score }}%</span></td>
+          <td class="fw-semibold">{{ j.company }}</td>
+          <td>{{ j.role }}</td>
+          <td class="text-muted small">{{ j.location }}</td>
+          <td><span class="status-badge {{ j.status | badge_class }}">{{ j.status }}</span></td>
+          <td class="text-muted small">{{ j.discovered_date | days_ago }}</td>
+          <td>
+            {% if j.link %}
+            <a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-inbox display-4 text-muted"></i>
+    <p class="mt-3 text-muted">No jobs tracked yet.</p>
+    <p class="text-muted small">
+      Trigger the <strong>Daily Job Scan</strong> workflow in
+      <a href="https://github.com/dpgit07/job-search-agent/actions" target="_blank">GitHub Actions</a>
+      to populate your tracker.
+    </p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

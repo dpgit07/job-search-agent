@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: job-search-dashboard
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --threads 4 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: GITHUB_REPO
+        value: dpgit07/job-search-agent
+      - key: GITHUB_BRANCH
+        value: main
+      - key: ANTHROPIC_API_KEY
+        sync: false   # set in Render dashboard
+      - key: APIFY_TOKEN
+        sync: false   # set in Render dashboard

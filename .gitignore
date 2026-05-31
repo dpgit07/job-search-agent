@@ -26,6 +26,14 @@ env/
 # Node
 node_modules/
 
+# Flask / web app
+instance/
+.flask_session/
+flask_session/
+
+# Gunicorn
+*.pid
+
 # Generated outputs (these are personal/ephemeral, not meant for the repo)
 output/reports/*.md
 output/cover_letters/*.md

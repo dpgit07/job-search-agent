@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}All Jobs — Job Search Agent{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+  <div>
+    <h1 class="page-title">All Jobs</h1>
+    <p class="page-subtitle">{{ jobs | length }} jobs tracked · sorted by fit score</p>
+  </div>
+  <a href="/api/refresh" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-clockwise"></i> Refresh
+  </a>
+</div>
+
+<!-- ── Filters ─────────────────────────────────────────────────────────────── -->
+<div class="section-card mb-4">
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+
+    <!-- Status filters -->
+    <div class="filter-group">
+      <span class="filter-label">Status:</span>
+      <button class="filter-btn active" data-filter="status" data-value="all">
+        All <span class="filter-count">{{ jobs | length }}</span>
+      </button>
+      {% for s in statuses %}
+      <button class="filter-btn" data-filter="status" data-value="{{ s }}">
+        {{ s | title }}
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Fit score filters -->
+    <div class="filter-group ms-auto">
+      <span class="filter-label">Fit:</span>
+      <button class="filter-btn active" data-filter="fit" data-value="all">All</button>
+      <button class="filter-btn" data-filter="fit" data-value="high">🔥 ≥85%</button>
+      <button class="filter-btn" data-filter="fit" data-value="mid">≥70%</button>
+    </div>
+
+    <!-- Search -->
+    <input
+      id="searchInput"
+      type="text"
+      class="form-control form-control-sm search-box"
+      placeholder="Search company or role…"
+    />
+
+  </div>
+</div>
+
+<!-- ── Jobs table ──────────────────────────────────────────────────────────── -->
+<div class="section-card">
+  <div class="table-responsive">
+    <table class="table table-hover" id="jobsTable">
+      <thead>
+        <tr>
+          <th>Fit</th>
+          <th>Company</th>
+          <th>Role</th>
+          <th>Location</th>
+          <th>Salary</th>
+          <th>Status</th>
+          <th>Found</th>
+          <th>Rec.</th>
+          <th>Matching Skills</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in jobs %}
+        <tr
+          data-status="{{ j.status }}"
+          data-fit="{{ j.fit_score }}"
+          data-search="{{ (j.company ~ ' ' ~ j.role) | lower }}"
+        >
+          <td>
+            <span class="fit-badge {{ j.fit_score | fit_class }}">{{ j.fit_score }}%</span>
+          </td>
+          <td class="fw-semibold">{{ j.company }}</td>
+          <td>{{ j.role }}</td>
+          <td class="text-muted small">{{ j.location }}</td>
+          <td class="text-muted small">{{ j.salary or '—' }}</td>
+          <td><span class="status-badge {{ j.status | badge_class }}">{{ j.status }}</span></td>
+          <td class="text-muted small">{{ j.discovered_date | days_ago }}</td>
+          <td>
+            <span class="rec-badge rec-{{ (j.recommendation or 'maybe') | lower }}">
+              {{ j.recommendation or '—' }}
+            </span>
+          </td>
+          <td class="small">
+            {% for skill in (j.key_skills_matching or [])[:4] %}
+              <span class="skill-chip">{{ skill }}</span>
+            {% endfor %}
+            {% if j.key_skills_missing %}
+              {% for skill in (j.key_skills_missing or [])[:2] %}
+                <span class="skill-chip gap">{{ skill }}</span>
+              {% endfor %}
+            {% endif %}
+          </td>
+          <td>
+            {% if j.link %}
+            <a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if not jobs %}
+    <div class="empty-state">
+      <i class="bi bi-inbox display-4 text-muted"></i>
+      <p class="mt-3 text-muted">No jobs yet. Trigger the daily scan to start.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="table-footer d-flex justify-content-between align-items-center px-1 pt-2">
+    <span id="visibleCount" class="text-muted small">Showing {{ jobs | length }} jobs</span>
+    <span class="text-muted small">
+      <span class="fit-badge fit-high">≥85%</span> high priority &nbsp;
+      <span class="fit-badge fit-mid">≥70%</span> good match &nbsp;
+      <span class="fit-badge fit-low">&lt;70%</span> low match
+    </span>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  let activeStatus = 'all';
+  let activeFit    = 'all';
+
+  const rows      = Array.from(document.querySelectorAll('#jobsTable tbody tr'));
+  const countEl   = document.getElementById('visibleCount');
+  const searchBox = document.getElementById('searchInput');
+
+  function apply() {
+    const q = searchBox.value.toLowerCase();
+    let visible = 0;
+
+    rows.forEach(row => {
+      const status  = row.dataset.status;
+      const fit     = parseInt(row.dataset.fit, 10);
+      const search  = row.dataset.search;
+
+      const matchStatus = activeStatus === 'all' || status === activeStatus;
+      const matchFit    = activeFit   === 'all'
+        || (activeFit === 'high' && fit >= 85)
+        || (activeFit === 'mid'  && fit >= 70);
+      const matchSearch = !q || search.includes(q);
+
+      const show = matchStatus && matchFit && matchSearch;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    countEl.textContent = `Showing ${visible} job${visible !== 1 ? 's' : ''}`;
+  }
+
+  // Status filter buttons
+  document.querySelectorAll('[data-filter="status"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-filter="status"]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeStatus = btn.dataset.value;
+      apply();
+    });
+  });
+
+  // Fit filter buttons
+  document.querySelectorAll('[data-filter="fit"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-filter="fit"]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFit = btn.dataset.value;
+      apply();
+    });
+  });
+
+  // Search
+  searchBox.addEventListener('input', apply);
+})();
+</script>
+{% endblock %}
