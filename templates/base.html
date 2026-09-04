@@ -26,6 +26,9 @@
     <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
       <i class="bi bi-speedometer2"></i> Dashboard
     </a>
+    <a href="{{ url_for('pipeline_page') }}" class="nav-link {% if request.endpoint == 'pipeline_page' %}active{% endif %}">
+      <i class="bi bi-kanban"></i> My Pipeline
+    </a>
     <a href="{{ url_for('jobs_page') }}" class="nav-link {% if request.endpoint == 'jobs_page' %}active{% endif %}">
       <i class="bi bi-briefcase"></i> All Jobs
     </a>

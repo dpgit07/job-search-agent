@@ -355,3 +355,118 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
+/* ── Summary bar ─────────────────────────────────────────────────────────── */
+.summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+.summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.summary-pill-link:hover { color: var(--accent); text-decoration: none; }
+.summary-sep { color: var(--border); }
+
+/* ── Fresh job rows ──────────────────────────────────────────────────────── */
+.job-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.job-row:last-child { border-bottom: none; }
+.job-row:hover { background: #f8fafc; border-radius: 8px; }
+
+.job-row-fit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 52px;
+}
+.job-age {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.job-row-body { flex: 1; min-width: 0; }
+
+.job-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+.job-company {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+.job-role {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.job-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.job-row-skills { margin-top: 2px; }
+
+.job-row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  min-width: 110px;
+}
+
+.job-row-done { opacity: 0.5; }
+
+/* ── Fit filter tabs ─────────────────────────────────────────────────────── */
+.fit-tab {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fit-tab:hover { border-color: var(--accent); color: var(--accent); }
+.fit-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+/* ── Pipeline buttons ────────────────────────────────────────────────────── */
+.btn-xs {
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-xs:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn-xs:disabled { opacity: 0.35; cursor: default; }
+.pipe-btn-offer:hover:not(:disabled) { border-color: var(--c-offer); color: var(--c-offer); }
+.pipe-btn-reject:hover:not(:disabled) { border-color: var(--c-rejected); color: var(--c-rejected); }

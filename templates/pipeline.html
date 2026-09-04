@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}My Pipeline — Job Search Agent{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="page-title mb-1">My Pipeline</h1>
+    <p class="page-subtitle">{{ pipeline | length }} active application{{ 's' if pipeline | length != 1 else '' }}</p>
+  </div>
+</div>
+
+{% if not github_token_set %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-4 py-2" style="font-size:0.82rem;">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <span>
+    <strong>GITHUB_TOKEN not set</strong> — status updates will not persist across Render restarts.
+    Add it in your <a href="https://dashboard.render.com" target="_blank">Render env vars</a>.
+  </span>
+</div>
+{% endif %}
+
+<!-- ── Follow-ups due ─────────────────────────────────────────────────────── -->
+{% if follow_ups %}
+<div class="section-card mb-4" style="border-left: 3px solid var(--c-applied);">
+  <div class="section-header">
+    <h2 class="section-title" style="color:var(--c-applied);">
+      <i class="bi bi-alarm-fill"></i> Follow-up Due ({{ follow_ups | length }})
+    </h2>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead><tr>
+        <th>Company</th><th>Role</th><th>Status</th>
+        <th>Applied</th><th>Follow-up</th><th>Fit</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for j in follow_ups %}
+        <tr data-id="{{ j.id }}">
+          <td class="fw-semibold">{{ j.company }}</td>
+          <td>{{ j.role }}</td>
+          <td><span class="status-badge {{ j.status | badge_class }}">{{ j.status }}</span></td>
+          <td class="text-muted small">{{ j.applied_date | fmt_date }}</td>
+          <td class="fw-semibold" style="color:var(--c-applied);">{{ j.follow_up_date | fmt_date }}</td>
+          <td><span class="fit-badge {{ j.fit_score | fit_class }}">{{ j.fit_score }}%</span></td>
+          <td>
+            {% if j.link %}<a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Pipeline table ─────────────────────────────────────────────────────── -->
+{% if pipeline %}
+<div class="section-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead><tr>
+        <th>Status</th><th>Fit</th><th>Company</th><th>Role</th>
+        <th>Applied</th><th>Follow-up</th><th>Update Status</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for j in pipeline %}
+        <tr id="pipe-{{ j.id }}">
+          <td>
+            <span class="status-badge {{ j.status | badge_class }} status-label" id="status-{{ j.id }}">
+              {{ j.status }}
+            </span>
+          </td>
+          <td><span class="fit-badge {{ j.fit_score | fit_class }}">{{ j.fit_score }}%</span></td>
+          <td class="fw-semibold">{{ j.company }}</td>
+          <td>{{ j.role }}</td>
+          <td class="text-muted small">{{ j.applied_date | fmt_date }}</td>
+          <td class="text-muted small {% if j.follow_up_date %}text-warning{% endif %}">
+            {{ j.follow_up_date | fmt_date }}
+          </td>
+          <td>
+            <div class="d-flex gap-1 flex-wrap">
+              <button class="btn btn-xs pipe-btn" data-id="{{ j.id }}" data-status="interviewing"
+                      {% if j.status == 'interviewing' %}disabled{% endif %}>
+                Interview
+              </button>
+              <button class="btn btn-xs pipe-btn pipe-btn-offer" data-id="{{ j.id }}" data-status="offer"
+                      {% if j.status == 'offer' %}disabled{% endif %}>
+                Offer
+              </button>
+              <button class="btn btn-xs pipe-btn pipe-btn-reject" data-id="{{ j.id }}" data-status="rejected"
+                      {% if j.status == 'rejected' %}disabled{% endif %}>
+                Rejected
+              </button>
+            </div>
+          </td>
+          <td>
+            {% if j.link %}<a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="section-card">
+  <div class="empty-state">
+    <i class="bi bi-send display-4 text-muted"></i>
+    <p class="mt-3 text-muted">No active applications yet.</p>
+    <p class="text-muted small">
+      Use the <strong>Mark Applied</strong> buttons on the
+      <a href="{{ url_for('dashboard') }}">Dashboard</a> to track applications.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+<div class="mt-3 px-1">
+  <small class="text-muted">
+    <i class="bi bi-info-circle"></i>
+    You can also update from CLI:
+    <code>python scripts/update_status.py --company "Meta" --status interviewing --push</code>
+  </small>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const STATUS_LABELS = {
+    applied: 'applied', interviewing: 'interviewing', offer: 'offer', rejected: 'rejected'
+  };
+  const STATUS_CLASSES = {
+    applied: 'badge-applied', interviewing: 'badge-interviewing',
+    offer: 'badge-offer', rejected: 'badge-rejected'
+  };
+
+  document.querySelectorAll('.pipe-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const jobId  = btn.dataset.id;
+      const status = btn.dataset.status;
+      btn.disabled = true;
+      btn.textContent = '…';
+
+      fetch('/api/update-job', {
+        method:  'POST',
+        headers: {'Content-Type': 'application/json'},
+        body:    JSON.stringify({job_id: jobId, status: status}),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          const label = document.getElementById(`status-${jobId}`);
+          if (label) {
+            label.className = `status-badge ${STATUS_CLASSES[status] || 'badge-secondary'} status-label`;
+            label.textContent = status;
+          }
+          // Disable all buttons for this job, re-enable non-current ones
+          document.querySelectorAll(`.pipe-btn[data-id="${jobId}"]`).forEach(b => {
+            b.disabled = b.dataset.status === status;
+            if (!b.disabled) b.textContent = b.dataset.status.charAt(0).toUpperCase() + b.dataset.status.slice(1);
+          });
+          if (status === 'rejected') {
+            const row = document.getElementById(`pipe-${jobId}`);
+            if (row) {
+              row.style.opacity = '0.4';
+              row.style.transition = 'opacity 0.4s';
+            }
+          }
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Retry';
+          alert('Update failed: ' + (data.error || 'unknown error'));
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Retry';
+      });
+    });
+  });
+})();
+</script>
+{% endblock %}
