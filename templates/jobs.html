@@ -3,71 +3,54 @@
 
 {% block content %}
 
-<div class="page-header d-flex justify-content-between align-items-center">
+<div class="d-flex justify-content-between align-items-start mb-3">
   <div>
-    <h1 class="page-title">All Jobs</h1>
-    <p class="page-subtitle">{{ jobs | length }} jobs tracked · sorted by fit score</p>
+    <h1 class="page-title mb-1">All Jobs</h1>
+    <p class="page-subtitle" id="jobCountLine">{{ jobs | length }} jobs tracked · sorted by fit + date</p>
   </div>
-  <a href="/api/refresh" class="btn btn-outline-secondary btn-sm">
+  <a href="/api/refresh" class="btn btn-sm btn-outline-secondary mt-1">
     <i class="bi bi-arrow-clockwise"></i> Refresh
   </a>
 </div>
 
-<!-- ── Filters ─────────────────────────────────────────────────────────────── -->
-<div class="section-card mb-4">
-  <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+<!-- ── Filter bar ─────────────────────────────────────────────────────────── -->
+<div class="filter-bar mb-3">
 
-    <!-- Status filters -->
-    <div class="filter-group">
-      <span class="filter-label">Status:</span>
-      <button class="filter-btn active" data-filter="status" data-value="all">All</button>
-      {% for s in statuses %}
-      <button class="filter-btn" data-filter="status" data-value="{{ s }}">{{ s | title }}</button>
-      {% endfor %}
-    </div>
-
-    <!-- Fit score filters -->
-    <div class="filter-group ms-auto">
-      <span class="filter-label">Fit:</span>
-      <button class="filter-btn active" data-filter="fit" data-value="all">All</button>
-      <button class="filter-btn" data-filter="fit" data-value="high">🔥 ≥85%</button>
-      <button class="filter-btn" data-filter="fit" data-value="mid">≥70%</button>
-    </div>
-
+  <!-- Time period -->
+  <div class="filter-group">
+    <span class="filter-label">Period:</span>
+    <button class="filter-btn" data-filter="time" data-value="2">Last 2 days</button>
+    <button class="filter-btn active" data-filter="time" data-value="7">Last 7 days</button>
+    <button class="filter-btn" data-filter="time" data-value="14">Last 2 weeks</button>
+    <button class="filter-btn" data-filter="time" data-value="30">Last month</button>
+    <button class="filter-btn" data-filter="time" data-value="0">All time</button>
   </div>
-  <div class="d-flex flex-wrap gap-2 align-items-center">
 
-    <!-- Time period filters -->
-    <div class="filter-group">
-      <span class="filter-label"><i class="bi bi-clock"></i> Period:</span>
-      <button class="filter-btn active" data-filter="time" data-value="all">All time</button>
-      <button class="filter-btn" data-filter="time" data-value="2d">Last 2 days</button>
-      <button class="filter-btn" data-filter="time" data-value="7d">Last 7 days</button>
-      <button class="filter-btn" data-filter="time" data-value="30d">Last 30 days</button>
-    </div>
-
-    <!-- Archive toggle -->
-    <div class="filter-group ms-auto">
-      <span class="filter-label">
-        <button class="filter-btn" id="archiveToggle" data-archived="false">
-          <i class="bi bi-archive"></i> Show archived
-        </button>
-      </span>
-    </div>
-
-    <!-- Search -->
-    <input
-      id="searchInput"
-      type="text"
-      class="form-control form-control-sm search-box"
-      placeholder="Search company or role…"
-      style="max-width:220px;"
-    />
-
+  <!-- Fit score -->
+  <div class="filter-group">
+    <span class="filter-label">Fit:</span>
+    <button class="filter-btn active" data-filter="fit" data-value="70">≥ 70%</button>
+    <button class="filter-btn" data-filter="fit" data-value="85">≥ 85%</button>
+    <button class="filter-btn" data-filter="fit" data-value="90">≥ 90%</button>
+    <button class="filter-btn" data-filter="fit" data-value="0">Any</button>
   </div>
+
+  <!-- Status -->
+  <div class="filter-group">
+    <span class="filter-label">Status:</span>
+    <button class="filter-btn active" data-filter="status" data-value="new">New only</button>
+    <button class="filter-btn" data-filter="status" data-value="all">All statuses</button>
+  </div>
+
+  <!-- Search -->
+  <div class="ms-auto">
+    <input id="searchBox" type="text" class="form-control form-control-sm"
+           placeholder="Search company, role…" style="width:220px;" />
+  </div>
+
 </div>
 
-<!-- ── Jobs table ──────────────────────────────────────────────────────────── -->
+<!-- ── Jobs table ─────────────────────────────────────────────────────────── -->
 <div class="section-card">
   <div class="table-responsive">
     <table class="table table-hover" id="jobsTable">
@@ -78,30 +61,35 @@
           <th>Role</th>
           <th>Location</th>
           <th>Salary</th>
-          <th>Status</th>
-          <th>Found</th>
-          <th>Rec.</th>
+          <th>Rec</th>
           <th>Matching Skills</th>
-          <th></th>
+          <th>Gaps</th>
+          <th>Found</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for j in jobs %}
         <tr
-          data-status="{{ j.status }}"
+          id="row-{{ j.id }}"
+          data-id="{{ j.id }}"
           data-fit="{{ j.fit_score }}"
-          data-search="{{ (j.company ~ ' ' ~ j.role) | lower }}"
+          data-status="{{ j.status }}"
           data-discovered="{{ j.discovered_date or '' }}"
+          data-search="{{ (j.company ~ ' ' ~ j.role) | lower }}"
         >
           <td>
             <span class="fit-badge {{ j.fit_score | fit_class }}">{{ j.fit_score }}%</span>
           </td>
-          <td class="fw-semibold">{{ j.company }}</td>
-          <td>{{ j.role }}</td>
-          <td class="text-muted small">{{ j.location }}</td>
-          <td class="text-muted small">{{ j.salary or '—' }}</td>
-          <td><span class="status-badge {{ j.status | badge_class }}">{{ j.status }}</span></td>
-          <td class="text-muted small">{{ j.discovered_date | days_ago }}</td>
+          <td class="fw-semibold" style="white-space:nowrap;">{{ j.company }}</td>
+          <td style="min-width:200px;">{{ j.role }}</td>
+          <td class="text-muted small" style="white-space:nowrap;">
+            {{ j.location }}
+            {% if j.remote == 'yes' %}
+              <span class="text-success ms-1"><i class="bi bi-wifi"></i></span>
+            {% endif %}
+          </td>
+          <td class="text-muted small" style="white-space:nowrap;">{{ j.salary or '—' }}</td>
           <td>
             <span class="rec-badge rec-{{ (j.recommendation or 'maybe') | lower }}">
               {{ j.recommendation or '—' }}
@@ -111,38 +99,44 @@
             {% for skill in (j.key_skills_matching or [])[:4] %}
               <span class="skill-chip">{{ skill }}</span>
             {% endfor %}
-            {% if j.key_skills_missing %}
-              {% for skill in (j.key_skills_missing or [])[:2] %}
-                <span class="skill-chip gap">{{ skill }}</span>
-              {% endfor %}
-            {% endif %}
           </td>
-          <td>
-            {% if j.link %}
-            <a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-              <i class="bi bi-box-arrow-up-right"></i>
-            </a>
-            {% endif %}
+          <td class="small">
+            {% for skill in (j.key_skills_missing or [])[:3] %}
+              <span class="skill-chip gap">{{ skill }}</span>
+            {% endfor %}
+          </td>
+          <td class="text-muted small" style="white-space:nowrap;">{{ j.discovered_date | days_ago }}</td>
+          <td style="white-space:nowrap;">
+            <div class="d-flex gap-1 align-items-center">
+              {% if j.link %}
+              <a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open posting">
+                <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+              {% endif %}
+              {% if j.status == 'new' %}
+              <button class="btn btn-sm btn-success apply-btn" data-id="{{ j.id }}" title="Mark applied">
+                ✓ Applied
+              </button>
+              <button class="btn btn-sm btn-outline-secondary skip-btn" data-id="{{ j.id }}" title="Skip">
+                <i class="bi bi-x"></i>
+              </button>
+              {% else %}
+              <span class="status-badge {{ j.status | badge_class }}">{{ j.status }}</span>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-
-    {% if not jobs %}
-    <div class="empty-state">
-      <i class="bi bi-inbox display-4 text-muted"></i>
-      <p class="mt-3 text-muted">No jobs yet. Trigger the daily scan to start.</p>
-    </div>
-    {% endif %}
   </div>
 
-  <div class="table-footer d-flex justify-content-between align-items-center px-1 pt-2">
-    <span id="visibleCount" class="text-muted small">Showing {{ jobs | length }} jobs</span>
+  <div class="table-footer d-flex justify-content-between align-items-center">
+    <span id="visibleCount" class="text-muted small"></span>
     <span class="text-muted small">
-      <span class="fit-badge fit-high">≥85%</span> high priority &nbsp;
-      <span class="fit-badge fit-mid">≥70%</span> good match &nbsp;
-      <span class="fit-badge fit-low">&lt;70%</span> low match
+      <span class="fit-badge fit-high">≥85%</span> high &nbsp;
+      <span class="fit-badge fit-mid">70–84%</span> good &nbsp;
+      <span class="fit-badge fit-low">&lt;70%</span> low
     </span>
   </div>
 </div>
@@ -152,101 +146,116 @@
 {% block scripts %}
 <script>
 (function () {
-  let activeStatus   = 'all';
-  let activeFit      = 'all';
-  let activeTime     = 'all';
-  let showArchived   = false;
+  let activeTime   = 7;    // days; 0 = all time
+  let activeFit    = 70;   // minimum fit %
+  let activeStatus = 'new'; // 'new' or 'all'
 
   const rows      = Array.from(document.querySelectorAll('#jobsTable tbody tr'));
   const countEl   = document.getElementById('visibleCount');
-  const searchBox = document.getElementById('searchInput');
-  const archiveBtn = document.getElementById('archiveToggle');
+  const searchBox = document.getElementById('searchBox');
 
-  function daysSince(dateStr) {
-    if (!dateStr) return 9999;
-    return Math.floor((Date.now() - new Date(dateStr)) / 86400000);
+  function daysSince(iso) {
+    if (!iso) return 9999;
+    return Math.floor((Date.now() - new Date(iso)) / 86400000);
   }
 
   function apply() {
-    const q = searchBox.value.toLowerCase();
+    const q = (searchBox.value || '').toLowerCase().trim();
     let visible = 0;
 
     rows.forEach(row => {
+      const fit        = parseInt(row.dataset.fit, 10) || 0;
       const status     = row.dataset.status;
-      const fit        = parseInt(row.dataset.fit, 10);
-      const search     = row.dataset.search;
       const discovered = row.dataset.discovered;
+      const search     = row.dataset.search;
       const age        = daysSince(discovered);
 
-      // Hide archived unless toggle is on
-      if (status === 'archived' && !showArchived) {
-        row.style.display = 'none';
-        return;
-      }
-
-      const matchStatus = activeStatus === 'all' || status === activeStatus;
-      const matchFit    = activeFit === 'all'
-        || (activeFit === 'high' && fit >= 85)
-        || (activeFit === 'mid'  && fit >= 70);
-      const matchTime   = activeTime === 'all'
-        || (activeTime === '2d'  && age <= 2)
-        || (activeTime === '7d'  && age <= 7)
-        || (activeTime === '30d' && age <= 30);
+      const matchTime   = activeTime === 0 || age <= activeTime;
+      const matchFit    = fit >= activeFit;
+      const matchStatus = activeStatus === 'all' || status === 'new';
       const matchSearch = !q || search.includes(q);
 
-      const show = matchStatus && matchFit && matchTime && matchSearch;
+      const show = matchTime && matchFit && matchStatus && matchSearch;
       row.style.display = show ? '' : 'none';
       if (show) visible++;
     });
 
-    countEl.textContent = `Showing ${visible} job${visible !== 1 ? 's' : ''}`;
+    countEl.textContent = `Showing ${visible.toLocaleString()} of ${rows.length.toLocaleString()} jobs`;
   }
 
-  // Status filter buttons
-  document.querySelectorAll('[data-filter="status"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('[data-filter="status"]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      activeStatus = btn.dataset.value;
-      apply();
+  // Wire up filter buttons
+  function wireFilters(attr, setter) {
+    document.querySelectorAll(`[data-filter="${attr}"]`).forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll(`[data-filter="${attr}"]`).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setter(btn.dataset.value);
+        apply();
+      });
     });
-  });
+  }
 
-  // Fit filter buttons
-  document.querySelectorAll('[data-filter="fit"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('[data-filter="fit"]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      activeFit = btn.dataset.value;
-      apply();
-    });
-  });
+  wireFilters('time',   v => { activeTime   = parseInt(v, 10); });
+  wireFilters('fit',    v => { activeFit    = parseInt(v, 10); });
+  wireFilters('status', v => { activeStatus = v; });
 
-  // Time period filter buttons
-  document.querySelectorAll('[data-filter="time"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('[data-filter="time"]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      activeTime = btn.dataset.value;
-      apply();
-    });
-  });
-
-  // Archive toggle
-  archiveBtn.addEventListener('click', () => {
-    showArchived = !showArchived;
-    archiveBtn.dataset.archived = showArchived;
-    archiveBtn.classList.toggle('active', showArchived);
-    archiveBtn.innerHTML = showArchived
-      ? '<i class="bi bi-archive-fill"></i> Archived visible'
-      : '<i class="bi bi-archive"></i> Show archived';
-    apply();
-  });
-
-  // Search
   searchBox.addEventListener('input', apply);
 
-  // Initial apply: hide archived by default
+  // Mark Applied / Skip
+  function updateJob(jobId, status, btn) {
+    btn.disabled = true;
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    fetch('/api/update-job', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({job_id: jobId, status: status}),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        const row = document.getElementById(`row-${jobId}`);
+        if (row) {
+          row.dataset.status = status;
+          // Replace buttons with status badge
+          const actionCell = row.querySelector('td:last-child .d-flex');
+          if (actionCell) {
+            const link = actionCell.querySelector('a');
+            const badgeClass = {
+              applied: 'badge-applied', withdrawn: 'badge-secondary'
+            }[status] || 'badge-secondary';
+            actionCell.innerHTML = (link ? link.outerHTML + ' ' : '') +
+              `<span class="status-badge ${badgeClass}">${status}</span>`;
+          }
+          // If filter is "new only", hide the row after a brief flash
+          if (activeStatus === 'new') {
+            row.style.background = '#f0fdf4';
+            setTimeout(() => {
+              row.style.display = 'none';
+              countEl.textContent = countEl.textContent.replace(
+                /Showing (\d[\d,]*)/, (_, n) => `Showing ${Math.max(0, parseInt(n.replace(/,/g,'')) - 1).toLocaleString()}`
+              );
+            }, 800);
+          }
+        }
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+        alert('Update failed: ' + (data.error || 'unknown'));
+      }
+    })
+    .catch(() => { btn.disabled = false; btn.innerHTML = orig; });
+  }
+
+  document.addEventListener('click', e => {
+    const applyBtn = e.target.closest('.apply-btn');
+    const skipBtn  = e.target.closest('.skip-btn');
+    if (applyBtn) updateJob(applyBtn.dataset.id, 'applied',   applyBtn);
+    if (skipBtn)  updateJob(skipBtn.dataset.id,  'withdrawn', skipBtn);
+  });
+
+  // Run initial filter on page load
   apply();
 })();
 </script>

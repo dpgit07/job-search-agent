@@ -134,44 +134,49 @@ def days_ago(s: str) -> str:
 def dashboard():
     data   = load_tracker()
     jobs   = data.get("jobs", [])
-    active = [j for j in jobs if j.get("status") not in ("archived", "rejected", "withdrawn")]
+    active = [j for j in jobs if j.get("status") != "archived"]
 
-    # Compact summary stats
+    today_d     = date.today()
+    two_ago     = (today_d - timedelta(days=2)).isoformat()
+    seven_ago   = (today_d - timedelta(days=7)).isoformat()
+    fourteen_ago = (today_d - timedelta(days=14)).isoformat()
+    thirty_ago  = (today_d - timedelta(days=30)).isoformat()
+    today_str   = today_d.isoformat()
+
+    def disc(j): return j.get("discovered_date", "")[:10]
+
     stats = {
-        "total":        len([j for j in jobs if j.get("status") != "archived"]),
+        "total":        len(active),
         "new":          sum(1 for j in active if j.get("status") == "new"),
         "applied":      sum(1 for j in active if j.get("status") in ("applied", "tailored", "reviewing")),
         "interviewing": sum(1 for j in active if j.get("status") == "interviewing"),
         "offers":       sum(1 for j in active if j.get("status") == "offer"),
+        "rejected":     sum(1 for j in active if j.get("status") == "rejected"),
+        "high_fit":     sum(1 for j in active if j.get("fit_score", 0) >= 85),
+        "mid_fit":      sum(1 for j in active if 70 <= j.get("fit_score", 0) < 85),
+        "low_fit":      sum(1 for j in active if j.get("fit_score", 0) < 70),
     }
 
-    # Fresh jobs: new status, ≥70% fit, last 14 days, sorted by fit desc
-    two_weeks_ago = (date.today() - timedelta(days=14)).isoformat()
-    fresh = sorted(
-        [
-            j for j in jobs
-            if j.get("status") == "new"
-            and j.get("fit_score", 0) >= 70
-            and j.get("discovered_date", "")[:10] >= two_weeks_ago
-        ],
-        key=lambda j: j.get("fit_score", 0),
-        reverse=True,
-    )
+    time_stats = {
+        "last_2d":   sum(1 for j in active if disc(j) >= two_ago),
+        "last_7d":   sum(1 for j in active if disc(j) >= seven_ago),
+        "last_14d":  sum(1 for j in active if disc(j) >= fourteen_ago),
+        "last_30d":  sum(1 for j in active if disc(j) >= thirty_ago),
+    }
 
-    today_str    = date.today().isoformat()
-    two_days_ago = (date.today() - timedelta(days=2)).isoformat()
-    new_today    = sum(1 for j in fresh if j.get("discovered_date", "")[:10] >= today_str)
-    new_2d       = sum(1 for j in fresh if j.get("discovered_date", "")[:10] >= two_days_ago)
+    follow_ups = [
+        j for j in active
+        if j.get("follow_up_date") and j["follow_up_date"] <= today_str
+        and j.get("status") not in ("rejected", "withdrawn", "offer")
+    ]
 
     return render_template(
         "dashboard.html",
         stats=stats,
-        fresh=fresh,
-        new_today=new_today,
-        new_2d=new_2d,
+        time_stats=time_stats,
+        follow_ups=follow_ups,
         last_scan=data.get("last_scan"),
         total_scans=data.get("total_scans", 0),
-        github_token_set=bool(GITHUB_TOKEN),
     )
 
 
@@ -204,17 +209,20 @@ def pipeline_page():
 
 @app.route("/jobs")
 def jobs_page():
-    data     = load_tracker()
+    data = load_tracker()
+    # Sort: fit DESC primary, then posted/discovered date DESC secondary
+    def sort_key(j):
+        date_str = (j.get("posted_date") or j.get("discovered_date") or "")[:10]
+        return (j.get("fit_score", 0), date_str)
+
     all_jobs = sorted(
         [j for j in data.get("jobs", []) if j.get("status") != "archived"],
-        key=lambda j: j.get("fit_score", 0),
+        key=sort_key,
         reverse=True,
     )
-    statuses = sorted({j.get("status", "new") for j in all_jobs})
     return render_template(
         "jobs.html",
         jobs=all_jobs,
-        statuses=statuses,
         github_token_set=bool(GITHUB_TOKEN),
     )
 

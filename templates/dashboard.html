@@ -1,19 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Fresh Jobs — Job Search Agent{% endblock %}
+{% block title %}Dashboard — Job Search Agent{% endblock %}
 
 {% block content %}
 
-<!-- ── Header ───────────────────────────────────────────────────────────────── -->
-<div class="d-flex justify-content-between align-items-start mb-3">
+<div class="d-flex justify-content-between align-items-start mb-4">
   <div>
-    <h1 class="page-title mb-1">Fresh Jobs</h1>
-    <p class="page-subtitle mb-0">
+    <h1 class="page-title mb-1">Overview</h1>
+    <p class="page-subtitle">
       {% if last_scan %}
-        Last scan {{ last_scan | fmt_date }} ({{ last_scan | days_ago }})
-        &nbsp;·&nbsp;
+        Last scan: <strong>{{ last_scan | fmt_date }}</strong> ({{ last_scan | days_ago }})
+        &nbsp;·&nbsp; {{ total_scans }} total scans
+      {% else %}
+        No scans yet
       {% endif %}
-      <strong class="text-body">{{ fresh | length }}</strong> to review
-      {% if new_2d %}&nbsp;·&nbsp;<span class="text-success fw-semibold">{{ new_2d }} new last 2 days</span>{% endif %}
     </p>
   </div>
   <a href="/api/refresh" class="btn btn-sm btn-outline-secondary mt-1">
@@ -21,186 +20,156 @@
   </a>
 </div>
 
-<!-- ── Summary pills ─────────────────────────────────────────────────────────── -->
-<div class="summary-bar mb-4">
-  <span class="summary-pill">
-    <i class="bi bi-collection text-muted"></i>
-    <strong>{{ stats.total }}</strong> tracked
-  </span>
-  <span class="summary-sep">·</span>
-  <span class="summary-pill">
-    <i class="bi bi-stars" style="color:var(--c-new)"></i>
-    <strong>{{ stats.new }}</strong> new
-  </span>
-  <span class="summary-sep">·</span>
-  <a href="{{ url_for('pipeline_page') }}" class="summary-pill summary-pill-link">
-    <i class="bi bi-send" style="color:var(--c-applied)"></i>
-    <strong>{{ stats.applied }}</strong> applied
-  </a>
-  <span class="summary-sep">·</span>
-  <a href="{{ url_for('pipeline_page') }}" class="summary-pill summary-pill-link">
-    <i class="bi bi-people" style="color:var(--c-interviewing)"></i>
-    <strong>{{ stats.interviewing }}</strong> interviewing
-  </a>
-  {% if stats.offers %}
-  <span class="summary-sep">·</span>
-  <a href="{{ url_for('pipeline_page') }}" class="summary-pill summary-pill-link text-success fw-semibold">
-    <i class="bi bi-trophy"></i>
-    <strong>{{ stats.offers }}</strong> offer{{ 's' if stats.offers != 1 else '' }}!
-  </a>
-  {% endif %}
-</div>
-
-{% if not github_token_set %}
-<div class="alert alert-warning d-flex align-items-center gap-2 mb-4 py-2" style="font-size:0.82rem;">
-  <i class="bi bi-exclamation-triangle-fill"></i>
-  <span>
-    <strong>GITHUB_TOKEN not set</strong> — "Mark Applied" buttons will update your session only (not saved to GitHub).
-    Add it in your <a href="https://dashboard.render.com" target="_blank">Render env vars</a> to persist status changes.
-  </span>
-</div>
-{% endif %}
-
-<!-- ── Fresh job list ────────────────────────────────────────────────────────── -->
-{% if fresh %}
-
-<!-- Fit filter tabs -->
-<div class="d-flex gap-2 mb-3 align-items-center">
-  <span class="text-muted small">Show:</span>
-  <button class="fit-tab active" data-min="0">All ({{ fresh | length }})</button>
-  <button class="fit-tab" data-min="85">🔥 ≥85% ({{ fresh | selectattr('fit_score', 'ge', 85) | list | length }})</button>
-  <button class="fit-tab" data-min="70">≥70%</button>
-  <span class="ms-auto text-muted small">sorted by fit · status updates save to GitHub</span>
-</div>
-
-<div id="jobList">
-{% for j in fresh %}
-<div class="job-row" data-id="{{ j.id }}" data-fit="{{ j.fit_score }}">
-  <div class="job-row-fit">
-    <span class="fit-badge {{ j.fit_score | fit_class }}">{{ j.fit_score }}%</span>
-    <span class="job-age">{{ j.discovered_date | days_ago }}</span>
-  </div>
-
-  <div class="job-row-body">
-    <div class="job-row-title">
-      <span class="job-company">{{ j.company }}</span>
-      <span class="job-role">{{ j.role }}</span>
-    </div>
-    <div class="job-row-meta">
-      {% if j.location %}<span><i class="bi bi-geo-alt"></i> {{ j.location }}</span>{% endif %}
-      {% if j.salary %}<span><i class="bi bi-currency-dollar"></i> {{ j.salary }}</span>{% endif %}
-      {% if j.remote == 'yes' %}<span class="text-success"><i class="bi bi-wifi"></i> Remote</span>{% endif %}
-    </div>
-    <div class="job-row-skills">
-      {% for skill in (j.key_skills_matching or [])[:5] %}
-        <span class="skill-chip">{{ skill }}</span>
-      {% endfor %}
-      {% for skill in (j.key_skills_missing or [])[:2] %}
-        <span class="skill-chip gap">{{ skill }}</span>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div class="job-row-actions">
-    {% if j.link %}
-    <a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open job posting">
-      Open <i class="bi bi-box-arrow-up-right"></i>
+<!-- ── Total + pipeline stats ─────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4 col-xl-2">
+    <a href="{{ url_for('jobs_page') }}" class="stat-card stat-total d-block text-decoration-none">
+      <div class="stat-number">{{ stats.total }}</div>
+      <div class="stat-label"><i class="bi bi-collection"></i> Total Tracked</div>
     </a>
-    {% endif %}
-    <button class="btn btn-sm btn-success apply-btn" data-id="{{ j.id }}" title="Mark as applied">
-      <i class="bi bi-check-lg"></i> Applied
-    </button>
-    <button class="btn btn-sm btn-outline-secondary skip-btn" data-id="{{ j.id }}" title="Skip this job">
-      <i class="bi bi-x"></i>
-    </button>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <a href="{{ url_for('jobs_page') }}" class="stat-card stat-new d-block text-decoration-none">
+      <div class="stat-number">{{ stats.new }}</div>
+      <div class="stat-label"><i class="bi bi-stars"></i> New / Unread</div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <a href="{{ url_for('pipeline_page') }}" class="stat-card stat-applied d-block text-decoration-none">
+      <div class="stat-number">{{ stats.applied }}</div>
+      <div class="stat-label"><i class="bi bi-send"></i> Applied</div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <a href="{{ url_for('pipeline_page') }}" class="stat-card stat-interviewing d-block text-decoration-none">
+      <div class="stat-number">{{ stats.interviewing }}</div>
+      <div class="stat-label"><i class="bi bi-people"></i> Interviewing</div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <a href="{{ url_for('pipeline_page') }}" class="stat-card stat-offer d-block text-decoration-none">
+      <div class="stat-number">{{ stats.offers }}</div>
+      <div class="stat-label"><i class="bi bi-trophy"></i> Offers</div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="stat-card stat-rejected">
+      <div class="stat-number">{{ stats.rejected }}</div>
+      <div class="stat-label"><i class="bi bi-x-circle"></i> Rejected</div>
+    </div>
   </div>
 </div>
-{% endfor %}
+
+<!-- ── Discovery by time period ───────────────────────────────────────────── -->
+<div class="section-card mb-4">
+  <div class="section-header">
+    <h2 class="section-title">
+      <i class="bi bi-clock-history"></i> New Jobs by Period
+    </h2>
+    <a href="{{ url_for('jobs_page') }}" class="btn btn-sm btn-outline-secondary">
+      Browse all <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+  <div class="row g-0 text-center">
+    <div class="col-3 period-cell border-end">
+      <div class="period-num text-success">{{ time_stats.last_2d }}</div>
+      <div class="period-lbl">Last 2 days</div>
+    </div>
+    <div class="col-3 period-cell border-end">
+      <div class="period-num">{{ time_stats.last_7d }}</div>
+      <div class="period-lbl">Last 7 days</div>
+    </div>
+    <div class="col-3 period-cell border-end">
+      <div class="period-num">{{ time_stats.last_14d }}</div>
+      <div class="period-lbl">Last 2 weeks</div>
+    </div>
+    <div class="col-3 period-cell">
+      <div class="period-num">{{ time_stats.last_30d }}</div>
+      <div class="period-lbl">Last month</div>
+    </div>
+  </div>
 </div>
 
-<div class="text-center mt-4 mb-2">
-  <a href="{{ url_for('jobs_page') }}" class="btn btn-outline-secondary btn-sm">
-    View all {{ stats.total }} tracked jobs <i class="bi bi-arrow-right"></i>
-  </a>
+<!-- ── Fit distribution ───────────────────────────────────────────────────── -->
+<div class="section-card mb-4">
+  <div class="section-header">
+    <h2 class="section-title"><i class="bi bi-bar-chart-line"></i> Fit Score Breakdown</h2>
+  </div>
+  <div class="row g-0 text-center">
+    <div class="col-4 period-cell border-end">
+      <div class="period-num" style="color:var(--fit-high)">{{ stats.high_fit }}</div>
+      <div class="period-lbl">≥ 85% <span class="text-muted">(high priority)</span></div>
+    </div>
+    <div class="col-4 period-cell border-end">
+      <div class="period-num" style="color:var(--fit-mid)">{{ stats.mid_fit }}</div>
+      <div class="period-lbl">70–84% <span class="text-muted">(good match)</span></div>
+    </div>
+    <div class="col-4 period-cell">
+      <div class="period-num text-muted">{{ stats.low_fit }}</div>
+      <div class="period-lbl">&lt; 70% <span class="text-muted">(low match)</span></div>
+    </div>
+  </div>
 </div>
 
-{% else %}
-<div class="section-card">
-  <div class="empty-state">
-    <i class="bi bi-inbox display-4 text-muted"></i>
-    <p class="mt-3 text-muted">No fresh high-fit jobs right now.</p>
-    <p class="text-muted small">
-      Trigger the <strong>Daily Job Scan</strong> in
-      <a href="https://github.com/dpgit07/job-search-agent/actions" target="_blank">GitHub Actions</a>
-      to find new matches.
-    </p>
+<!-- ── Follow-ups due ─────────────────────────────────────────────────────── -->
+{% if follow_ups %}
+<div class="section-card mb-4" style="border-left:3px solid var(--c-applied);">
+  <div class="section-header">
+    <h2 class="section-title" style="color:var(--c-applied);">
+      <i class="bi bi-alarm-fill"></i> Follow-ups Due ({{ follow_ups | length }})
+    </h2>
+    <a href="{{ url_for('pipeline_page') }}" class="btn btn-sm btn-outline-secondary">
+      View pipeline <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead><tr>
+        <th>Company</th><th>Role</th><th>Status</th><th>Follow-up Due</th><th>Fit</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for j in follow_ups %}
+        <tr>
+          <td class="fw-semibold">{{ j.company }}</td>
+          <td>{{ j.role }}</td>
+          <td><span class="status-badge {{ j.status | badge_class }}">{{ j.status }}</span></td>
+          <td class="fw-semibold" style="color:var(--c-applied);">{{ j.follow_up_date | fmt_date }}</td>
+          <td><span class="fit-badge {{ j.fit_score | fit_class }}">{{ j.fit_score }}%</span></td>
+          <td>{% if j.link %}<a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
 {% endif %}
 
-{% endblock %}
+<!-- ── Quick links ────────────────────────────────────────────────────────── -->
+<div class="row g-3">
+  <div class="col-md-6">
+    <a href="{{ url_for('jobs_page') }}" class="section-card d-block p-4 text-decoration-none quick-link-card">
+      <div class="d-flex align-items-center gap-3">
+        <i class="bi bi-briefcase fs-2 text-primary"></i>
+        <div>
+          <div class="fw-bold">Browse All Jobs</div>
+          <div class="text-muted small">Filter by time, fit score, apply directly</div>
+        </div>
+        <i class="bi bi-arrow-right ms-auto text-muted"></i>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-6">
+    <a href="{{ url_for('pipeline_page') }}" class="section-card d-block p-4 text-decoration-none quick-link-card">
+      <div class="d-flex align-items-center gap-3">
+        <i class="bi bi-kanban fs-2" style="color:var(--c-interviewing)"></i>
+        <div>
+          <div class="fw-bold">My Pipeline</div>
+          <div class="text-muted small">Track applied, interviewing, offers</div>
+        </div>
+        <i class="bi bi-arrow-right ms-auto text-muted"></i>
+      </div>
+    </a>
+  </div>
+</div>
 
-{% block scripts %}
-<script>
-(function () {
-  // Fit filter tabs
-  const tabs = Array.from(document.querySelectorAll('.fit-tab'));
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const min = parseInt(tab.dataset.min, 10);
-      document.querySelectorAll('.job-row').forEach(row => {
-        const fit = parseInt(row.dataset.fit, 10);
-        row.style.display = fit >= min ? '' : 'none';
-      });
-    });
-  });
-
-  // Mark Applied / Skip buttons
-  function updateJob(jobId, status, btn) {
-    const row = document.querySelector(`.job-row[data-id="${jobId}"]`);
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-    fetch('/api/update-job', {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify({job_id: jobId, status: status}),
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.ok) {
-        row.classList.add('job-row-done');
-        setTimeout(() => {
-          row.style.maxHeight = row.offsetHeight + 'px';
-          row.style.overflow  = 'hidden';
-          row.style.transition = 'max-height 0.4s ease, opacity 0.4s ease, margin 0.4s ease';
-          requestAnimationFrame(() => {
-            row.style.maxHeight = '0';
-            row.style.opacity   = '0';
-            row.style.marginBottom = '0';
-          });
-          setTimeout(() => row.remove(), 450);
-        }, 600);
-      } else {
-        btn.disabled = false;
-        btn.textContent = 'Retry';
-        alert('Error: ' + (data.error || 'unknown'));
-      }
-    })
-    .catch(() => {
-      btn.disabled = false;
-      btn.textContent = 'Retry';
-    });
-  }
-
-  document.querySelectorAll('.apply-btn').forEach(btn => {
-    btn.addEventListener('click', () => updateJob(btn.dataset.id, 'applied', btn));
-  });
-  document.querySelectorAll('.skip-btn').forEach(btn => {
-    btn.addEventListener('click', () => updateJob(btn.dataset.id, 'withdrawn', btn));
-  });
-})();
-</script>
 {% endblock %}
