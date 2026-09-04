@@ -15,18 +15,14 @@
 
 <!-- ── Filters ─────────────────────────────────────────────────────────────── -->
 <div class="section-card mb-4">
-  <div class="d-flex flex-wrap gap-2 align-items-center">
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
 
     <!-- Status filters -->
     <div class="filter-group">
       <span class="filter-label">Status:</span>
-      <button class="filter-btn active" data-filter="status" data-value="all">
-        All <span class="filter-count">{{ jobs | length }}</span>
-      </button>
+      <button class="filter-btn active" data-filter="status" data-value="all">All</button>
       {% for s in statuses %}
-      <button class="filter-btn" data-filter="status" data-value="{{ s }}">
-        {{ s | title }}
-      </button>
+      <button class="filter-btn" data-filter="status" data-value="{{ s }}">{{ s | title }}</button>
       {% endfor %}
     </div>
 
@@ -38,12 +34,34 @@
       <button class="filter-btn" data-filter="fit" data-value="mid">≥70%</button>
     </div>
 
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+
+    <!-- Time period filters -->
+    <div class="filter-group">
+      <span class="filter-label"><i class="bi bi-clock"></i> Period:</span>
+      <button class="filter-btn active" data-filter="time" data-value="all">All time</button>
+      <button class="filter-btn" data-filter="time" data-value="2d">Last 2 days</button>
+      <button class="filter-btn" data-filter="time" data-value="7d">Last 7 days</button>
+      <button class="filter-btn" data-filter="time" data-value="30d">Last 30 days</button>
+    </div>
+
+    <!-- Archive toggle -->
+    <div class="filter-group ms-auto">
+      <span class="filter-label">
+        <button class="filter-btn" id="archiveToggle" data-archived="false">
+          <i class="bi bi-archive"></i> Show archived
+        </button>
+      </span>
+    </div>
+
     <!-- Search -->
     <input
       id="searchInput"
       type="text"
       class="form-control form-control-sm search-box"
       placeholder="Search company or role…"
+      style="max-width:220px;"
     />
 
   </div>
@@ -73,6 +91,7 @@
           data-status="{{ j.status }}"
           data-fit="{{ j.fit_score }}"
           data-search="{{ (j.company ~ ' ' ~ j.role) | lower }}"
+          data-discovered="{{ j.discovered_date or '' }}"
         >
           <td>
             <span class="fit-badge {{ j.fit_score | fit_class }}">{{ j.fit_score }}%</span>
@@ -133,29 +152,49 @@
 {% block scripts %}
 <script>
 (function () {
-  let activeStatus = 'all';
-  let activeFit    = 'all';
+  let activeStatus   = 'all';
+  let activeFit      = 'all';
+  let activeTime     = 'all';
+  let showArchived   = false;
 
   const rows      = Array.from(document.querySelectorAll('#jobsTable tbody tr'));
   const countEl   = document.getElementById('visibleCount');
   const searchBox = document.getElementById('searchInput');
+  const archiveBtn = document.getElementById('archiveToggle');
+
+  function daysSince(dateStr) {
+    if (!dateStr) return 9999;
+    return Math.floor((Date.now() - new Date(dateStr)) / 86400000);
+  }
 
   function apply() {
     const q = searchBox.value.toLowerCase();
     let visible = 0;
 
     rows.forEach(row => {
-      const status  = row.dataset.status;
-      const fit     = parseInt(row.dataset.fit, 10);
-      const search  = row.dataset.search;
+      const status     = row.dataset.status;
+      const fit        = parseInt(row.dataset.fit, 10);
+      const search     = row.dataset.search;
+      const discovered = row.dataset.discovered;
+      const age        = daysSince(discovered);
+
+      // Hide archived unless toggle is on
+      if (status === 'archived' && !showArchived) {
+        row.style.display = 'none';
+        return;
+      }
 
       const matchStatus = activeStatus === 'all' || status === activeStatus;
-      const matchFit    = activeFit   === 'all'
+      const matchFit    = activeFit === 'all'
         || (activeFit === 'high' && fit >= 85)
         || (activeFit === 'mid'  && fit >= 70);
+      const matchTime   = activeTime === 'all'
+        || (activeTime === '2d'  && age <= 2)
+        || (activeTime === '7d'  && age <= 7)
+        || (activeTime === '30d' && age <= 30);
       const matchSearch = !q || search.includes(q);
 
-      const show = matchStatus && matchFit && matchSearch;
+      const show = matchStatus && matchFit && matchTime && matchSearch;
       row.style.display = show ? '' : 'none';
       if (show) visible++;
     });
@@ -183,8 +222,32 @@
     });
   });
 
+  // Time period filter buttons
+  document.querySelectorAll('[data-filter="time"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-filter="time"]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeTime = btn.dataset.value;
+      apply();
+    });
+  });
+
+  // Archive toggle
+  archiveBtn.addEventListener('click', () => {
+    showArchived = !showArchived;
+    archiveBtn.dataset.archived = showArchived;
+    archiveBtn.classList.toggle('active', showArchived);
+    archiveBtn.innerHTML = showArchived
+      ? '<i class="bi bi-archive-fill"></i> Archived visible'
+      : '<i class="bi bi-archive"></i> Show archived';
+    apply();
+  });
+
   // Search
   searchBox.addEventListener('input', apply);
+
+  // Initial apply: hide archived by default
+  apply();
 })();
 </script>
 {% endblock %}

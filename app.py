@@ -13,7 +13,7 @@ Environment variables (set in Render dashboard):
 import os
 import time
 import requests
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from flask import Flask, render_template, jsonify, redirect, url_for
 
 app = Flask(__name__)
@@ -71,6 +71,7 @@ def badge_class(status: str) -> str:
         "offer":       "badge-offer",
         "rejected":    "badge-rejected",
         "withdrawn":   "badge-secondary",
+        "archived":    "badge-archived",
     }.get(status, "badge-secondary")
 
 
@@ -107,37 +108,60 @@ def days_ago(s: str) -> str:
 def dashboard():
     data = load_tracker()
     jobs = data.get("jobs", [])
+    active = [j for j in jobs if j.get("status") != "archived"]
 
     stats = {
-        "total":        len(jobs),
-        "new":          sum(1 for j in jobs if j.get("status") == "new"),
-        "applied":      sum(1 for j in jobs if j.get("status") in ("applied", "tailored")),
-        "interviewing": sum(1 for j in jobs if j.get("status") == "interviewing"),
-        "offers":       sum(1 for j in jobs if j.get("status") == "offer"),
-        "rejected":     sum(1 for j in jobs if j.get("status") == "rejected"),
+        "total":        len(active),
+        "new":          sum(1 for j in active if j.get("status") == "new"),
+        "applied":      sum(1 for j in active if j.get("status") in ("applied", "tailored")),
+        "interviewing": sum(1 for j in active if j.get("status") == "interviewing"),
+        "offers":       sum(1 for j in active if j.get("status") == "offer"),
+        "rejected":     sum(1 for j in active if j.get("status") == "rejected"),
     }
 
+    today_d  = date.today()
+    two_ago  = (today_d - timedelta(days=2)).isoformat()
+    seven_ago = (today_d - timedelta(days=7)).isoformat()
+    thirty_ago = (today_d - timedelta(days=30)).isoformat()
+    today_str = today_d.isoformat()
+
+    time_stats = {
+        "today":    sum(1 for j in active if j.get("discovered_date", "")[:10] >= today_str),
+        "last_2d":  sum(1 for j in active if j.get("discovered_date", "")[:10] >= two_ago),
+        "last_7d":  sum(1 for j in active if j.get("discovered_date", "")[:10] >= seven_ago),
+        "last_30d": sum(1 for j in active if j.get("discovered_date", "")[:10] >= thirty_ago),
+        "archived": sum(1 for j in jobs   if j.get("status") == "archived"),
+    }
+
+    pipeline_statuses = ("applied", "tailored", "reviewing", "interviewing", "offer")
+    pipeline_order = {"offer": 0, "interviewing": 1, "applied": 2, "tailored": 3, "reviewing": 4}
+    pipeline = sorted(
+        [j for j in jobs if j.get("status") in pipeline_statuses],
+        key=lambda j: (pipeline_order.get(j.get("status", ""), 9), -(j.get("fit_score", 0))),
+    )
+
     high_priority = sorted(
-        [j for j in jobs if j.get("fit_score", 0) >= 85 and j.get("status") == "new"],
+        [j for j in active if j.get("fit_score", 0) >= 85 and j.get("status") == "new"],
         key=lambda j: j.get("fit_score", 0),
         reverse=True,
     )[:10]
 
-    today_str = date.today().isoformat()
     follow_ups = [
-        j for j in jobs
+        j for j in active
         if j.get("follow_up_date")
         and j["follow_up_date"] <= today_str
         and j.get("status") not in ("rejected", "withdrawn", "offer")
     ]
 
     recent = sorted(
-        jobs, key=lambda j: j.get("discovered_date", ""), reverse=True
+        active, key=lambda j: j.get("discovered_date", ""), reverse=True
     )[:8]
 
     return render_template(
         "dashboard.html",
         stats=stats,
+        time_stats=time_stats,
+        pipeline=pipeline,
         high_priority=high_priority,
         follow_ups=follow_ups,
         recent=recent,

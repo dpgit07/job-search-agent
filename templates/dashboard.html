@@ -70,6 +70,88 @@
 
 </div>
 
+<!-- ── Time discovery strip ─────────────────────────────────────────────────── -->
+<div class="section-card mb-4 py-3 px-4">
+  <div class="d-flex flex-wrap gap-4 align-items-center">
+    <span class="text-muted small fw-semibold me-1">
+      <i class="bi bi-clock"></i> Discovered:
+    </span>
+    <span class="time-pill">
+      <span class="time-num text-success">{{ time_stats.today }}</span>
+      <span class="time-lbl">today</span>
+    </span>
+    <span class="text-muted">·</span>
+    <span class="time-pill">
+      <span class="time-num">{{ time_stats.last_2d }}</span>
+      <span class="time-lbl">last 2 days</span>
+    </span>
+    <span class="text-muted">·</span>
+    <span class="time-pill">
+      <span class="time-num">{{ time_stats.last_7d }}</span>
+      <span class="time-lbl">last 7 days</span>
+    </span>
+    <span class="text-muted">·</span>
+    <span class="time-pill">
+      <span class="time-num">{{ time_stats.last_30d }}</span>
+      <span class="time-lbl">last 30 days</span>
+    </span>
+    {% if time_stats.archived %}
+    <span class="ms-auto text-muted small">
+      <i class="bi bi-archive"></i> {{ time_stats.archived }} archived
+    </span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── My Pipeline ───────────────────────────────────────────────────────────── -->
+{% if pipeline %}
+<div class="section-card mb-4">
+  <div class="section-header">
+    <h2 class="section-title">
+      <i class="bi bi-kanban text-info"></i> My Pipeline
+    </h2>
+    <span class="section-subtitle">{{ pipeline | length }} active application{{ 's' if pipeline | length != 1 else '' }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Status</th><th>Fit</th><th>Company</th><th>Role</th>
+          <th>Applied</th><th>Follow-up</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in pipeline %}
+        <tr>
+          <td><span class="status-badge {{ j.status | badge_class }}">{{ j.status }}</span></td>
+          <td><span class="fit-badge {{ j.fit_score | fit_class }}">{{ j.fit_score }}%</span></td>
+          <td class="fw-semibold">{{ j.company }}</td>
+          <td>{{ j.role }}</td>
+          <td class="text-muted small">{{ j.applied_date | fmt_date if j.applied_date else '—' }}</td>
+          <td class="text-muted small {% if j.follow_up_date %}text-warning{% endif %}">
+            {{ j.follow_up_date | fmt_date if j.follow_up_date else '—' }}
+          </td>
+          <td>
+            {% if j.link %}
+            <a href="{{ j.link }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="px-3 pt-2 pb-1">
+    <small class="text-muted">
+      <i class="bi bi-info-circle"></i>
+      Update statuses locally: <code>python scripts/update_status.py --company "Meta" --status applied --push</code>
+    </small>
+  </div>
+</div>
+{% endif %}
+
 <!-- ── Follow-ups due ────────────────────────────────────────────────────────── -->
 {% if follow_ups %}
 <div class="section-card mb-4">

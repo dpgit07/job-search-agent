@@ -19,7 +19,7 @@ import time
 import hashlib
 import argparse
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
 from pathlib import Path
 
 import anthropic
@@ -334,6 +334,29 @@ def normalise(raw: dict) -> dict:
     }
 
 
+# ── Archive helpers ────────────────────────────────────────────────────────────
+
+def auto_archive_stale(tracker: dict) -> int:
+    """Mark stale low-fit 'new' jobs as 'archived' — runs at start of each scan.
+
+    A job is archived if it is:
+      - status == "new" (not yet acted on)
+      - fit_score < 70 (below threshold)
+      - discovered_date older than 30 days
+    """
+    cutoff = (date.today() - timedelta(days=30)).isoformat()
+    count = 0
+    for job in tracker.get("jobs", []):
+        if (
+            job.get("status") == "new"
+            and job.get("fit_score", 100) < 70
+            and job.get("discovered_date", "")[:10] < cutoff
+        ):
+            job["status"] = "archived"
+            count += 1
+    return count
+
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main():
@@ -353,6 +376,11 @@ def main():
     profile       = load_json(PROFILE_PATH)
     tracker       = load_json(TRACKER_PATH)
     company_tiers = load_json(COMPANIES_PATH)
+
+    # Auto-archive stale low-fit jobs before scanning new ones
+    archived_count = auto_archive_stale(tracker)
+    if archived_count:
+        print(f"Archived {archived_count} stale jobs (>30 days old, fit <70%)\n")
 
     existing_ids = {j["id"] for j in tracker.get("jobs", []) if j.get("id")}
 
